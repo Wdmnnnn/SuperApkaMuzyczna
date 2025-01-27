@@ -3,7 +3,7 @@
 ## Opis
 Aplikacja jest dostępna na zewnętrznym serwerze jednego z autorów. Umożliwia:
 - Dodawanie nowych użytkowników.
-- Tworzenie nowych playlist (działają po odświeżeniu strony).
+- Tworzenie nowych playlist.
 - Zarządzanie utworami na playlistach.
 - Dodawanie ocen (rating) do utworów.
 - Odtwarzanie utworu (w obecnej wersji działa jedynie "Numb").
