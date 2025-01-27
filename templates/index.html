@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music App</title>
+    <style>
+        body {
+            display: flex;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        #sidebar {
+            width: 20%;
+            background-color: #f1f1f1;
+            padding: 10px;
+        }
+        #main {
+            width: 80%;
+            padding: 10px;
+        }
+        #footer {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background-color: #ddd;
+            text-align: center;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <h3>Playlists</h3>
+        <ul id="playlists"></ul>
+    </div>
+    <div id="main">
+        <h3>Songs</h3>
+        <ul id="songs"></ul>
+    </div>
+    <div id="footer">
+        <div id="playback-controls">
+            <audio id="audio-player" controls>
+  		<source src="" type="audio/wav">
+		Your browser does not support the audio element.
+	    </audio>
+            <span id="current-song">No song playing</span>
+            <input type="range" min="0" max="100" value="50" id="volume-control">
+        </div>
+    </div>
+    <script>
+        // Function to fetch and display playlists
+        function loadPlaylists() {
+            fetch('/api/playlists')
+                .then(response => response.json())
+                .then(playlists => {
+                    const playlistsEl = document.getElementById('playlists');
+                    playlistsEl.innerHTML = ''; // Clear existing playlists
+                    playlists.forEach((playlist, index) => {
+                        const li = document.createElement('li');
+                        li.innerHTML = `<a href="#" onclick="loadSongs(${index}); return false;">${playlist.name}</a>`;
+                        playlistsEl.appendChild(li);
+                    });
+                });
+        }
+
+        // Function to fetch and display songs for a specific playlist
+        function loadSongs(playlistId) {
+            fetch(`/api/songs/${playlistId}`)
+                .then(response => response.json())
+                .then(songs => {
+                    const songsEl = document.getElementById('songs');
+                    songsEl.innerHTML = ''; // Clear existing songs
+                    songs.forEach(song => {
+                        const li = document.createElement('li');
+                        li.innerHTML = `<a href="#" onclick="playSong('${song.url}', '${song.name}'); return false;">${song.name}</a>`;
+                        songsEl.appendChild(li);
+                    });
+                });
+        }
+	function playSong(url, name) {
+	    const audioPlayer = document.getElementById('audio-player');
+            audioPlayer.src = url;
+            audioPlayer.play()
+            document.getElementById('current-song').textContent = `Now playing: ${name}`;
+        }
+        // Load playlists on page load
+        document.addEventListener('DOMContentLoaded', loadPlaylists);
+    </script>
+</body>
+</html>

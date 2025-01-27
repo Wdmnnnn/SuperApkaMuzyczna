@@ -1,0 +1,239 @@
+import React, { useState, useEffect } from 'react';
+
+function App() {
+    const [playlists, setPlaylists] = useState([]);
+    const [songs, setSongs] = useState([]);
+    const [currentSong, setCurrentSong] = useState({ url: '', name: 'No song playing' });
+    const [selectedSong, setSelectedSong] = useState(null);
+    const [menuVisible, setMenuVisible] = useState(false);
+    const [UserId, setUserId] = useState(null);
+    const [menu_admin, set_menu_admin] = useState(false);
+    const [showRatingModal, setShowRatingModal] = useState(false); // To control visibility of rating modal
+    const [rating, setRating] = useState('');
+    const [error, setError] = useState('');
+    const [submitted, setSubmitted] = useState(false);
+    useEffect(() => {
+        fetch('/api/playlists')
+            .then(response => response.json())
+            .then(data => {
+                // Assuming data is an array of objects with PLAYLIST_ID and TITLE
+                const formattedPlaylists = data.map(playlist => ({
+                    id: playlist.PLAYLIST_ID,
+                    title: playlist.TITLE
+                }));
+                setPlaylists(formattedPlaylists);
+            });
+        fetch('/api/current_user')
+	    .then(response => response.json())
+	    .then(data => setUserId(data.id));
+    }, []);
+    const openRatingModal = () => {
+        setShowRatingModal(true);
+    };
+
+    const closeRatingModal = () => {
+        setShowRatingModal(false);
+        setRating('');
+        setError('');
+    };
+
+    const handleInputChange = (e) => {
+        const value = e.target.value;
+        if (value === '' || (value >= 1 && value <= 5)) {
+            setRating(value);
+            setError('');
+        } else {
+            setError('Please enter a number between 1 and 5');
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+
+        // If input is valid, send data to the server
+        if (rating >= 1 && rating <= 5) {
+            try {
+                const response = await fetch('/api/submit-rating', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ rating }),
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    setSubmitted(true);
+                    setRating('');
+                    setShowRatingModal(false);
+                } else {
+                    setError(result.message || 'Something went wrong!');
+                }
+            } catch (error) {
+                setError('Failed to submit rating');
+            }
+        } else {
+            setError('Please enter a number between 1 and 5');
+        }
+    };
+    const loadSongs = (playlistId) => {
+        fetch(`/api/songs/${playlistId}`)
+            .then(response => response.json())
+            .then(data => {
+                const formattedSongs = data.map(song => ({
+                    title: song.TITLE,
+                    FILE_PATH: song.FILE_PATH,
+                    rating: song.RATING,
+                    owner: song.USERNAME
+                }));
+                setSongs(formattedSongs);
+             });
+    };
+    const playSong = (url, name) => {
+        setCurrentSong({ url, name });
+        const audioPlayer = document.getElementById('audio-player');
+        audioPlayer.src = url;
+        audioPlayer.play();
+	setCurrentSong(name);
+    };
+    const toggleMenu = (song) => {
+        setSelectedSong(song);
+        if (UserId === song.owner) {
+          setMenuVisible(!menuVisible);
+        }
+
+    };
+    return (
+        <div style={{ display: 'flex', height: '100vh', margin: 0, fontFamily: 'Arial, sans-serif' }}>
+            <Sidebar playlists={playlists} loadSongs={loadSongs} UserId={UserId}/>
+            <Main
+		songs={songs} playSong={playSong} 
+	     	playSong={playSong}
+    		toggleMenu={toggleMenu}          // Added this line to pass toggleMenu
+    		menuVisible={menuVisible}        // Added this line to pass menuVisible
+    		selectedSong={selectedSong}      // Added this line to pass selectedSong
+    		setMenuVisible={setMenuVisible}  // Added this line to pass setMenuVisible
+		UserId={UserId}
+                menu_admin={menu_admin}
+                set_menu_admin={set_menu_admin}
+                openRatingModal={openRatingModal}
+                showRatingModal={showRatingModal}
+                handleSubmit={handleSubmit}
+                rating={rating}
+                closeRatingModal={closeRatingModal}
+                handleInputChange={handleInputChange}
+	    />
+            <Footer currentSong={currentSong} />
+        </div>
+    );
+}
+
+
+function Sidebar({ playlists, loadSongs, UserId }) {
+    return (
+        <div style={{ width: '20%', backgroundColor: '#f1f1f1', padding: '10px' }}>
+            <h3>Playlists</h3>
+	    <div>
+		Logged in as {UserId}
+	    </div>
+            <ul>
+                {playlists.map((playlist, index) => (
+                    <li key={index}>
+                        <a href="#" onClick={(e) => { e.preventDefault(); loadSongs(playlist.id); }}>
+                            {playlist.title}
+                        </a>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
+}
+
+function Main({ songs, playSong, toggleMenu, menuVisible, selectedSong, setMenuVisible, menu_admin, toggle_admin, openRatingModal,showRatingModal, handleSubmit, rating, handleInputChange, closeRatingModal}) {
+    return (
+        <div style={{ width: '80%', padding: '10px' }}>
+            <h3>Songs</h3>
+ 	    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+               <thead>
+                  <tr>
+                    <th>Song Name</th>
+                    <th>Owner</th>
+                    <button onClick={openRatingModal}>Rate</button>
+                 </tr>
+              </thead>
+              <tbody>
+                {songs.map((song) => (
+                   <tr key={song.url}>
+                     <td>
+                        <a href="#" onClick={() => playSong(song.FILE_PATH, song.title)}>
+                          {song.title}
+                        </a>
+                     </td>
+                     <td>{song.owner}</td>
+                     <td>{song.rating}</td>
+		     <td>
+			<button onClick={() => toggleMenu(song)}>Menu</button>
+		     </td>
+                   </tr>
+            ))}
+          </tbody>
+        </table>
+        {menuVisible && selectedSong && (
+          <div style={{
+            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', padding: '20px', backgroundColor: '#fff', border: '1px solid #ccc', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+          }}>
+            <h4>Options for {selectedSong.title}</h4>
+            <ul>
+              <li><button onClick={() => playSong(selectedSong.url, selectedSong.name)}>Play</button></li>
+              <li><button onClick={() => openRatingModal()}>Rate</button></li>
+              <li><button>Add to Playlist</button></li>
+              <li><button>More Info</button></li>
+            </ul>
+            <button onClick={() => setMenuVisible(false)}>Close Menu</button>
+          </div>
+        )}
+            {showPlaylistModal && (
+ {/* Rating Modal Pop-up */}
+            {showRatingModal && (
+                <div style={{
+                    position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', padding: '20px', backgroundColor: '#fff', border: '1px solid #ccc', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)', zIndex: 1000
+                }}>
+                    <h4>Rate this song</h4>
+                    <form onSubmit={handleSubmit}>
+                        <div>
+                            <label>Rating (1-5):</label>
+                            <input
+                                type="number"
+                                value={rating}
+                                onChange={handleInputChange}
+                                min="1"
+                                max="5"
+                            />
+                        </div>
+                        <button type="submit">Submit Rating</button>
+                        <button type="button" onClick={closeRatingModal}>Close</button>
+                    </form>
+                </div>
+            )}
+      </div>
+    );
+console.log(songs); 
+}
+
+function Footer({ currentSong }) {
+    return (
+        <div style={{ position: 'absolute', bottom: 0, width: '100%', backgroundColor: '#ddd', textAlign: 'center', padding: '10px' }}>
+            <div id="playback-controls">
+                <audio id="audio-player" controls>
+                    <source src={currentSong.url} type="audio/wav" />
+                    Your browser does not support the audio element.
+                </audio>
+                <span>{currentSong.name}</span>
+                <input type="range" min="0" max="100" defaultValue="50" id="volume-control" />
+            </div>
+        </div>
+    );
+}
+
+export default App;
+
